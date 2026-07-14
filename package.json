@@ -1,0 +1,9 @@
+{
+  "name": "yuzu-prototypes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prototipos personalizados por prospecto para cold outreach de Yuzu Lab. Sitio estático, sin build step.",
+  "scripts": {
+    "deploy": "vercel --prod --yes"
+  }
+}
