@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yuzu Lab — Home Care Scheduling Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================
+     THEME TOKENS — edit these per prospect to re-skin the whole
+     prototype. Swap the text inside #client-name-slot, swap
+     --accent / --accent-deep here, and swap the logo by editing
+     the single <template id="logo-template"> at the top of
+     <body> — it fills every logo placement automatically.
+     ========================================================= */
+  :root {
+    --accent: #FF1493;
+    --accent-deep: #BD0065;
+    --accent-soft: #EFE1E9;
+
+    --ink: #14161A;
+    --ink-soft: #565B63;
+    --ink-faint: #8A8F98;
+
+    --bg: #F7F5F1;
+    --surface: #FFFFFF;
+    --line: #E7E3DA;
+
+    --status-good: #2F7A6B;
+    --status-good-bg: #E3F0EC;
+    --status-pending: #B07A1E;
+    --status-pending-bg: #FBF0DA;
+    --status-alert: #B4472F;
+    --status-alert-bg: #F7E6E1;
+    --status-open-bg: #F1EEE7;
+
+    --radius: 14px;
+    --radius-sm: 9px;
+    --shadow: 0 1px 2px rgba(20,22,26,0.04), 0 8px 24px rgba(20,22,26,0.06);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .display { font-family: 'Syne', sans-serif; letter-spacing: -0.01em; margin: 0; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  button { font-family: inherit; cursor: pointer; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  /* ---------- Shell ---------- */
+  .shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+  @media (max-width: 900px) { .shell { grid-template-columns: 1fr; } .sidebar { position: sticky; top: 0; z-index: 20; } }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar { background: var(--ink); color: #F2F1EE; padding: 22px 18px; display: flex; flex-direction: column; gap: 28px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo-mark { width: 30px; height: 30px; flex: none; display: inline-block; }
+  .logo-mark svg { width: 100%; height: 100%; display: block; }
+  .brand-text .name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; line-height: 1.1; }
+  .brand-text .sub { font-size: 11px; color: #A9ADB4; margin-top: 2px; }
+
+  .client-badge { background: rgba(245,166,35,0.12); border: 1px solid rgba(245,166,35,0.35); border-radius: var(--radius-sm); padding: 10px 12px; }
+  .client-badge .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: 600; }
+  .client-badge .value { font-size: 14px; font-weight: 600; margin-top: 3px; color: #FFFFFF; }
+
+  nav.tabs-vertical { display: flex; flex-direction: column; gap: 4px; }
+  .navlink {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border-radius: var(--radius-sm); font-size: 14px; font-weight: 500;
+    color: #C7CAD0; border: none; background: transparent; width: 100%; text-align: left;
+  }
+  .navlink svg { flex: none; opacity: 0.75; }
+  .navlink:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  .navlink.active { background: var(--accent); color: #1B1200; font-weight: 700; }
+  .navlink.active svg { opacity: 1; }
+
+  .sidebar-foot { margin-top: auto; font-size: 11px; color: #7B808A; line-height: 1.5; }
+
+  /* ---------- Main ---------- */
+  main { padding: 28px 32px 60px; max-width: 1240px; }
+  @media (max-width: 640px) { main { padding: 20px 16px 48px; } }
+
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+  .page-head h1 { font-size: 24px; font-weight: 700; }
+  .page-head p { margin: 6px 0 0; color: var(--ink-soft); font-size: 14px; }
+  .page-actions { display: flex; gap: 10px; align-items: center; }
+  .btn-primary {
+    background: var(--accent); border: none; color: #1B1200; font-weight: 700;
+    font-size: 13.5px; padding: 10px 16px; border-radius: var(--radius-sm);
+  }
+  .btn-ghost {
+    background: var(--surface); border: 1px solid var(--line); color: var(--ink-soft);
+    font-weight: 600; font-size: 13.5px; padding: 10px 14px; border-radius: var(--radius-sm);
+  }
+  .week-nav { display: flex; align-items: center; gap: 8px; }
+  .week-nav button {
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--ink-soft); font-size: 14px;
+  }
+  .week-nav .label { font-size: 13.5px; font-weight: 600; padding: 0 4px; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  @media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+  .kpi .label { font-size: 12px; color: var(--ink-soft); font-weight: 500; }
+  .kpi .value { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; margin-top: 6px; }
+  .kpi .delta { font-size: 12px; margin-top: 4px; font-weight: 600; }
+  .kpi .delta.up { color: var(--status-good); }
+  .kpi .delta.warn { color: var(--status-pending); }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 20px; }
+  .panel-head { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .panel-head h3 { font-size: 15px; font-weight: 700; }
+  .panel-head .hint { font-size: 12px; color: var(--ink-faint); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink-soft); }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ---------- Weekly schedule grid ---------- */
+  .schedule-scroll { overflow-x: auto; }
+  .schedule-grid {
+    display: grid;
+    grid-template-columns: 150px repeat(7, minmax(120px, 1fr));
+    min-width: 980px;
+  }
+  .grid-head {
+    padding: 12px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-faint);
+    background: #FBFAF8;
+    border-bottom: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+  }
+  .grid-head.corner { border-left: none; }
+  .grid-head .date { display: block; font-size: 15px; color: var(--ink); font-family: 'Syne', sans-serif; font-weight: 700; margin-top: 2px; text-transform: none; letter-spacing: 0; }
+  .grid-head.weekend { background: #F5F2EC; }
+
+  .caregiver-cell {
+    padding: 12px 10px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent-deep);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex: none;
+  }
+  .caregiver-cell .cg-name { font-size: 13px; font-weight: 600; line-height: 1.2; }
+  .caregiver-cell .cg-role { font-size: 10.5px; color: var(--ink-faint); margin-top: 1px; }
+
+  .day-cell {
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+    padding: 8px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .day-cell.weekend { background: #FCFBF9; }
+
+  .visit-chip {
+    background: var(--status-good-bg);
+    color: var(--status-good);
+    border-radius: 7px;
+    padding: 5px 7px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+  .visit-chip b { display: block; font-size: 11.5px; color: var(--ink); }
+  .visit-chip.tentative { background: var(--status-pending-bg); color: var(--status-pending); }
+  .visit-chip.tentative b { color: var(--ink); }
+
+  .open-slot {
+    border: 1.5px dashed #D8CBA5;
+    background: var(--status-open-bg);
+    color: var(--accent-deep);
+    border-radius: 7px;
+    padding: 6px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    background-image: none;
+  }
+  .open-slot:hover { background: var(--accent-soft); }
+
+  /* ---------- Unscheduled patients panel ---------- */
+  .patient-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px; border-bottom: 1px solid var(--line); gap: 12px; flex-wrap: wrap;
+  }
+  .patient-row:last-child { border-bottom: none; }
+  .patient-row .p-name { font-weight: 600; font-size: 13.5px; }
+  .patient-row .p-sub { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+
+  /* ---------- Drawer ---------- */
+  .drawer-backdrop {
+    position: fixed; inset: 0; background: rgba(20,22,26,0.35);
+    opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 40;
+  }
+  .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed; top: 0; right: 0; height: 100%; width: 360px; max-width: 92vw;
+    background: var(--surface); box-shadow: -12px 0 32px rgba(20,22,26,0.14);
+    transform: translateX(100%); transition: transform .25s ease; z-index: 41;
+    display: flex; flex-direction: column;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .drawer-head h3 { font-size: 15px; font-weight: 700; }
+  .drawer-close { background: none; border: none; font-size: 18px; color: var(--ink-faint); }
+  .drawer-body { padding: 8px 0; overflow-y: auto; flex: 1; }
+  .slot-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); gap: 10px; }
+  .slot-row .s-info { font-size: 12.5px; }
+  .slot-row .s-info b { display: block; font-size: 13px; }
+  .slot-row .s-info span { color: var(--ink-faint); }
+  .slot-row button {
+    background: var(--accent); border: none; color: #1B1200; font-weight: 700;
+    font-size: 12px; padding: 7px 12px; border-radius: 8px; flex: none;
+  }
+  .slot-row.booked { opacity: 0.5; }
+  .slot-row.booked button { background: var(--status-good); color: #fff; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 20px);
+    background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
+    transition: all .25s ease; z-index: 60; display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- Mobile family view ---------- */
+  .phone-stage { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; padding: 10px 4px 30px; }
+  .phone-caption { max-width: 220px; }
+  .phone-caption h3 { font-size: 15px; margin-bottom: 8px; }
+  .phone-caption p { font-size: 13px; color: var(--ink-soft); line-height: 1.5; }
+  .phone-caption .step-num { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent-deep); font-weight: 600; margin-bottom: 6px; display: block; }
+
+  .phone { width: 260px; height: 560px; background: var(--ink); border-radius: 38px; padding: 12px; box-shadow: var(--shadow); flex: none; }
+  .phone-screen { background: var(--bg); width: 100%; height: 100%; border-radius: 26px; overflow-y: auto; position: relative; display: flex; flex-direction: column; }
+  .phone-notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 90px; height: 20px; background: var(--ink); border-radius: 0 0 14px 14px; z-index: 5; }
+  .phone-status { padding: 26px 18px 4px; font-size: 11px; color: var(--ink-faint); display: flex; justify-content: space-between; }
+  .phone-app-bar { padding: 4px 18px 12px; display: flex; align-items: center; justify-content: space-between; }
+  .phone-app-bar .left { display: flex; align-items: center; gap: 8px; }
+  .phone-app-bar .logo-mark { width: 18px; height: 18px; }
+  .phone-app-bar .t { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12.5px; }
+  .phone-app-bar .greet { font-size: 10.5px; color: var(--ink-faint); }
+
+  .phone-hero {
+    margin: 0 14px 12px;
+    background: var(--ink);
+    border-radius: 16px;
+    padding: 16px;
+    color: #fff;
+  }
+  .phone-hero .tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: 700; }
+  .phone-hero .who { font-size: 15px; font-weight: 700; margin-top: 6px; font-family: 'Syne', sans-serif; }
+  .phone-hero .when { font-size: 12px; color: #C7CAD0; margin-top: 3px; }
+  .phone-hero .countdown { margin-top: 10px; background: rgba(245,166,35,0.16); color: var(--accent); font-size: 11.5px; font-weight: 700; padding: 6px 10px; border-radius: 8px; display: inline-block; }
+
+  .phone-section-label { margin: 4px 14px 6px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 700; }
+
+  .phone-mini-card { margin: 0 14px 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 11px 13px; display: flex; justify-content: space-between; align-items: center; }
+  .phone-mini-card .m-left b { display: block; font-size: 12.5px; }
+  .phone-mini-card .m-left span { font-size: 11px; color: var(--ink-faint); }
+  .phone-mini-card .m-right { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; }
+
+  .phone-balance-card {
+    margin: 0 14px 12px; background: var(--accent-soft); border: 1px solid rgba(245,166,35,0.4);
+    border-radius: 16px; padding: 14px;
+  }
+  .phone-balance-card .b-label { font-size: 11px; color: var(--accent-deep); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .phone-balance-card .b-value { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 700; margin-top: 4px; color: #4A3200; }
+  .phone-balance-card .b-sub { font-size: 11px; color: #6B4A0C; margin-top: 4px; }
+
+  .phone-visit-row { margin: 0 14px; padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .phone-visit-row:last-child { border-bottom: none; }
+  .phone-visit-row .v-left b { font-size: 12.5px; display: block; }
+  .phone-visit-row .v-left span { font-size: 11px; color: var(--ink-faint); }
+
+  .phone-tabbar {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 8px 14px;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .phone-tabbar .tab-item { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 9.5px; color: var(--ink-faint); font-weight: 600; }
+  .phone-tabbar .tab-item.active { color: var(--accent-deep); }
+  .phone-tabbar .tab-item .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); opacity: 0; }
+  .phone-tabbar .tab-item.active .dot { opacity: 1; }
+
+  footer.meta { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink-faint); }
+</style>
+</head>
+<body>
+
+<!-- =========================================================
+     LOGO — single source of truth. Edit ONLY the SVG inside
+     this <template> to re-brand every logo instance on the
+     page (sidebar + the family app screens).
+     ========================================================= -->
+<template id="logo-template">
+  <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="16" cy="16" r="15" fill="#FF1493"/>
+    <circle cx="16" cy="16" r="10.5" fill="#EFE1E9"/>
+    <text x="16" y="20.5" font-family="DM Sans, sans-serif" font-size="10.5" font-weight="700" fill="#BD0065" text-anchor="middle">NH</text>
+  </svg>
+</template>
+
+<div class="shell">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo-mark" data-logo></span>
+      <div class="brand-text">
+        <div class="name">Yuzu Lab</div>
+        <div class="sub">Home Care OS</div>
+      </div>
+    </div>
+
+    <div class="client-badge">
+      <div class="label">Prototype for</div>
+      <div class="value" id="client-name-slot">Nicmoy Home Care Services</div>
+    </div>
+
+    <nav class="tabs-vertical">
+      <button class="navlink active" data-view="schedule">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Weekly Schedule
+      </button>
+      <button class="navlink" data-view="family">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="7" y="2" width="10" height="20" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M10.5 19h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Family App Preview
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">
+      Built by Yuzu Lab<br>
+      Implementations start at $50/mo
+    </div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <main>
+
+    <!-- ---------- WEEKLY SCHEDULE VIEW ---------- -->
+    <section class="view active" id="view-schedule">
+      <div class="page-head">
+        <div>
+          <h1>Weekly schedule</h1>
+          <p>Every caregiver's shifts at a glance, with open slots ready to fill.</p>
+        </div>
+        <div class="page-actions">
+          <div class="week-nav">
+            <button aria-label="Previous week">&#8249;</button>
+            <span class="label">Mar 2 &ndash; Mar 8</span>
+            <button aria-label="Next week">&#8250;</button>
+          </div>
+          <button class="btn-primary" id="open-drawer-btn">+ Schedule visit</button>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi">
+          <div class="label">Shifts this week</div>
+          <div class="value">64</div>
+          <div class="delta up">+5 vs last week</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Open slots</div>
+          <div class="value">9</div>
+          <div class="delta warn">Across 4 caregivers</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Coverage rate</div>
+          <div class="value">97%</div>
+          <div class="delta up">No gaps tomorrow</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Waiting to be scheduled</div>
+          <div class="value">3</div>
+          <div class="delta warn">Patients need a caregiver</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Caregiver availability</h3>
+          <div class="legend">
+            <span><span class="dot" style="background:var(--status-good);"></span>Scheduled visit</span>
+            <span><span class="dot" style="background:var(--status-pending);"></span>Tentative</span>
+            <span><span class="dot" style="background:var(--accent-deep); opacity:0.5;"></span>Open slot</span>
+          </div>
+        </div>
+        <div class="schedule-scroll">
+          <div class="schedule-grid">
+            <div class="grid-head corner">Caregiver</div>
+            <div class="grid-head">Mon<span class="date">3</span></div>
+            <div class="grid-head">Tue<span class="date">4</span></div>
+            <div class="grid-head">Wed<span class="date">5</span></div>
+            <div class="grid-head">Thu<span class="date">6</span></div>
+            <div class="grid-head">Fri<span class="date">7</span></div>
+            <div class="grid-head weekend">Sat<span class="date">8</span></div>
+            <div class="grid-head weekend">Sun<span class="date">9</span></div>
+
+            <!-- Row: Denise F. -->
+            <div class="caregiver-cell">
+              <div class="avatar">DF</div>
+              <div><div class="cg-name">Denise Fontaine</div><div class="cg-role">Companion care</div></div>
+            </div>
+            <div class="day-cell"><div class="visit-chip"><b>8:00 &ndash; 11:00</b>Eleanor Ruiz</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>8:00 &ndash; 11:00</b>Eleanor Ruiz</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>8:00 &ndash; 11:00</b>Eleanor Ruiz</div><div class="open-slot" data-open>+ Open 1&ndash;4pm</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>8:00 &ndash; 11:00</b>Eleanor Ruiz</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>8:00 &ndash; 11:00</b>Eleanor Ruiz</div></div>
+            <div class="day-cell weekend"><div class="open-slot" data-open>+ Open all day</div></div>
+            <div class="day-cell weekend"><div class="open-slot" data-open>+ Open all day</div></div>
+
+            <!-- Row: Jonas P. -->
+            <div class="caregiver-cell">
+              <div class="avatar">JP</div>
+              <div><div class="cg-name">Jonas Pierre</div><div class="cg-role">Personal care aide</div></div>
+            </div>
+            <div class="day-cell"><div class="visit-chip"><b>9:00 &ndash; 1:00</b>Harold Weiss</div><div class="visit-chip"><b>2:00 &ndash; 4:00</b>Marta Suarez</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>9:00 &ndash; 1:00</b>Harold Weiss</div><div class="open-slot" data-open>+ Open 2&ndash;5pm</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>9:00 &ndash; 1:00</b>Harold Weiss</div><div class="visit-chip"><b>2:00 &ndash; 4:00</b>Marta Suarez</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>9:00 &ndash; 1:00</b>Harold Weiss</div></div>
+            <div class="day-cell"><div class="visit-chip tentative"><b>9:00 &ndash; 1:00</b>Pending confirm</div></div>
+            <div class="day-cell weekend"><div class="visit-chip"><b>10:00 &ndash; 2:00</b>Harold Weiss</div></div>
+            <div class="day-cell weekend"><div class="open-slot" data-open>+ Open all day</div></div>
+
+            <!-- Row: Marisol O. -->
+            <div class="caregiver-cell">
+              <div class="avatar">MO</div>
+              <div><div class="cg-name">Marisol Okafor</div><div class="cg-role">Companion care</div></div>
+            </div>
+            <div class="day-cell"><div class="visit-chip"><b>7:00 &ndash; 3:00</b>Alice Bennett</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>7:00 &ndash; 3:00</b>Alice Bennett</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>7:00 &ndash; 3:00</b>Alice Bennett</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>7:00 &ndash; 3:00</b>Alice Bennett</div><div class="open-slot" data-open>+ Open 3&ndash;6pm</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>7:00 &ndash; 3:00</b>Alice Bennett</div></div>
+            <div class="day-cell weekend"><div class="open-slot" data-open>+ Open all day</div></div>
+            <div class="day-cell weekend"><div class="open-slot" data-open>+ Open all day</div></div>
+
+            <!-- Row: Keisha A. -->
+            <div class="caregiver-cell">
+              <div class="avatar">KA</div>
+              <div><div class="cg-name">Keisha Alvarez</div><div class="cg-role">Personal care aide</div></div>
+            </div>
+            <div class="day-cell"><div class="visit-chip"><b>12:00 &ndash; 4:00</b>Robert Kim</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>12:00 &ndash; 4:00</b>Robert Kim</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>12:00 &ndash; 4:00</b>Robert Kim</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>12:00 &ndash; 4:00</b>Robert Kim</div></div>
+            <div class="day-cell"><div class="visit-chip"><b>12:00 &ndash; 4:00</b>Robert Kim</div><div class="open-slot" data-open>+ Open 4&ndash;7pm</div></div>
+            <div class="day-cell weekend"><div class="visit-chip"><b>1:00 &ndash; 5:00</b>Robert Kim</div></div>
+            <div class="day-cell weekend"><div class="open-slot" data-open>+ Open all day</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Waiting to be scheduled</h3>
+          <span class="hint">New patients without a matched caregiver</span>
+        </div>
+        <div class="patient-row">
+          <div><div class="p-name">Grace Thompson</div><div class="p-sub">Companion care &middot; 3x/week &middot; Prefers mornings</div></div>
+          <button class="btn-ghost open-drawer-btn">Find a slot</button>
+        </div>
+        <div class="patient-row">
+          <div><div class="p-name">Walter Nunez</div><div class="p-sub">Personal care aide &middot; Daily &middot; Weekday afternoons</div></div>
+          <button class="btn-ghost open-drawer-btn">Find a slot</button>
+        </div>
+        <div class="patient-row">
+          <div><div class="p-name">Doris Feldman</div><div class="p-sub">Companion care &middot; Weekends &middot; Any time</div></div>
+          <button class="btn-ghost open-drawer-btn">Find a slot</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- FAMILY APP VIEW ---------- -->
+    <section class="view" id="view-family">
+      <div class="page-head">
+        <div>
+          <h1>Family app preview</h1>
+          <p>What a client or family member sees on their own phone &mdash; no calls to the office needed.</p>
+        </div>
+      </div>
+
+      <div class="phone-stage">
+
+        <!-- Phone 1: Home / next visit -->
+        <div class="phone-caption">
+          <span class="step-num">HOME</span>
+          <h3>Next visit</h3>
+          <p>The family sees exactly who's coming, when, and a live countdown. No more calling the office to ask if the caregiver is on the way.</p>
+        </div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="phone-notch"></div>
+            <div class="phone-status"><span>9:41</span><span>&#9679;&#9679;&#9679; &middot; Wi-Fi</span></div>
+            <div class="phone-app-bar">
+              <div class="left">
+                <span class="logo-mark" data-logo></span>
+                <span class="t">Home</span>
+              </div>
+              <span class="greet">Hi, Linda</span>
+            </div>
+
+            <div class="phone-hero">
+              <div class="tag">Next visit</div>
+              <div class="who">Denise Fontaine</div>
+              <div class="when">Today &middot; 8:00 AM &ndash; 11:00 AM</div>
+              <div class="countdown">Arriving in 45 min</div>
+            </div>
+
+            <div class="phone-section-label">This week</div>
+            <div class="phone-mini-card">
+              <div class="m-left"><b>Tue, Mar 4</b><span>Denise Fontaine &middot; 8:00 &ndash; 11:00 AM</span></div>
+              <div class="m-right mono">&check;</div>
+            </div>
+            <div class="phone-mini-card">
+              <div class="m-left"><b>Wed, Mar 5</b><span>Denise Fontaine &middot; 8:00 &ndash; 11:00 AM</span></div>
+              <div class="m-right mono">&check;</div>
+            </div>
+            <div class="phone-mini-card">
+              <div class="m-left"><b>Thu, Mar 6</b><span>Denise Fontaine &middot; 8:00 &ndash; 11:00 AM</span></div>
+              <div class="m-right mono">&middot;&middot;&middot;</div>
+            </div>
+
+            <div class="phone-tabbar">
+              <div class="tab-item active"><span class="dot"></span>Home</div>
+              <div class="tab-item">Schedule</div>
+              <div class="tab-item">Billing</div>
+              <div class="tab-item">Messages</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phone 2: Billing & visit history -->
+        <div class="phone-caption">
+          <span class="step-num">BILLING &amp; VISITS</span>
+          <h3>Account summary</h3>
+          <p>Current balance and a running log of completed visits, so families always know where things stand without asking the front office.</p>
+        </div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="phone-notch"></div>
+            <div class="phone-status"><span>9:41</span><span>&#9679;&#9679;&#9679; &middot; Wi-Fi</span></div>
+            <div class="phone-app-bar">
+              <div class="left">
+                <span class="logo-mark" data-logo></span>
+                <span class="t">Billing</span>
+              </div>
+              <span class="greet">Hi, Linda</span>
+            </div>
+
+            <div class="phone-balance-card">
+              <div class="b-label">Current balance</div>
+              <div class="b-value">$340.00</div>
+              <div class="b-sub">Next payment due Mar 15 &middot; Auto-pay on file</div>
+            </div>
+
+            <div class="phone-section-label">Recent visits</div>
+            <div class="phone-visit-row">
+              <div class="v-left"><b>Denise Fontaine</b><span>Mon, Mar 3 &middot; 3 hrs</span></div>
+              <div class="mono" style="font-size:12px; color:var(--ink-soft);">$90.00</div>
+            </div>
+            <div class="phone-visit-row">
+              <div class="v-left"><b>Denise Fontaine</b><span>Fri, Feb 28 &middot; 3 hrs</span></div>
+              <div class="mono" style="font-size:12px; color:var(--ink-soft);">$90.00</div>
+            </div>
+            <div class="phone-visit-row">
+              <div class="v-left"><b>Denise Fontaine</b><span>Thu, Feb 27 &middot; 3 hrs</span></div>
+              <div class="mono" style="font-size:12px; color:var(--ink-soft);">$90.00</div>
+            </div>
+            <div class="phone-visit-row">
+              <div class="v-left"><b>Denise Fontaine</b><span>Wed, Feb 26 &middot; 3 hrs</span></div>
+              <div class="mono" style="font-size:12px; color:var(--ink-soft);">$90.00</div>
+            </div>
+
+            <div class="phone-tabbar">
+              <div class="tab-item">Home</div>
+              <div class="tab-item">Schedule</div>
+              <div class="tab-item active"><span class="dot"></span>Billing</div>
+              <div class="tab-item">Messages</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer class="meta">
+      Prototype built by Yuzu Lab &middot; yuzulab.io &middot; Data shown is illustrative
+    </footer>
+
+  </main>
+</div>
+
+<!-- ---------- Schedule drawer ---------- -->
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h3>Available slots this week</h3>
+    <button class="drawer-close" id="drawer-close">&times;</button>
+  </div>
+  <div class="drawer-body" id="drawer-body">
+    <div class="slot-row" data-slot>
+      <div class="s-info"><b>Denise Fontaine</b><span>Wed, Mar 5 &middot; 1:00 &ndash; 4:00 PM</span></div>
+      <button data-book>Book</button>
+    </div>
+    <div class="slot-row" data-slot>
+      <div class="s-info"><b>Jonas Pierre</b><span>Tue, Mar 4 &middot; 2:00 &ndash; 5:00 PM</span></div>
+      <button data-book>Book</button>
+    </div>
+    <div class="slot-row" data-slot>
+      <div class="s-info"><b>Marisol Okafor</b><span>Thu, Mar 6 &middot; 3:00 &ndash; 6:00 PM</span></div>
+      <button data-book>Book</button>
+    </div>
+    <div class="slot-row" data-slot>
+      <div class="s-info"><b>Keisha Alvarez</b><span>Fri, Mar 7 &middot; 4:00 &ndash; 7:00 PM</span></div>
+      <button data-book>Book</button>
+    </div>
+    <div class="slot-row" data-slot>
+      <div class="s-info"><b>Denise Fontaine</b><span>Sat, Mar 8 &middot; All day</span></div>
+      <button data-book>Book</button>
+    </div>
+    <div class="slot-row" data-slot>
+      <div class="s-info"><b>Marisol Okafor</b><span>Sun, Mar 9 &middot; All day</span></div>
+      <button data-book>Book</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6" stroke="#F5A623" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span id="toast-text">Visit scheduled</span>
+</div>
+
+<script>
+  // Fill every logo placeholder from the single <template id="logo-template">.
+  const logoTemplate = document.getElementById('logo-template');
+  document.querySelectorAll('[data-logo]').forEach(slot => {
+    slot.appendChild(logoTemplate.content.cloneNode(true));
+  });
+
+  // Tab navigation
+  const links = document.querySelectorAll('.navlink');
+  const views = document.querySelectorAll('.view');
+  links.forEach(link => {
+    link.addEventListener('click', () => {
+      links.forEach(l => l.classList.remove('active'));
+      views.forEach(v => v.classList.remove('active'));
+      link.classList.add('active');
+      document.getElementById('view-' + link.dataset.view).classList.add('active');
+    });
+  });
+
+  // Drawer open/close
+  const drawer = document.getElementById('drawer');
+  const backdrop = document.getElementById('drawer-backdrop');
+  function openDrawer() { drawer.classList.add('open'); backdrop.classList.add('open'); }
+  function closeDrawer() { drawer.classList.remove('open'); backdrop.classList.remove('open'); }
+
+  document.querySelectorAll('.open-drawer-btn, #open-drawer-btn').forEach(btn => {
+    btn.addEventListener('click', openDrawer);
+  });
+  document.querySelectorAll('[data-open]').forEach(el => {
+    el.addEventListener('click', openDrawer);
+  });
+  document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+  backdrop.addEventListener('click', closeDrawer);
+
+  // Booking a slot from the drawer shows a toast (visual only, no backend)
+  const toast = document.getElementById('toast');
+  document.querySelectorAll('[data-book]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.slot-row');
+      row.classList.add('booked');
+      btn.textContent = 'Booked';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    });
+  });
+</script>
+
+</body>
+</html>
